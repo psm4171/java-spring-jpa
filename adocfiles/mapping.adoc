@@ -1,0 +1,1024 @@
+# Day 2
+
+# **ORM (Object-Relational Mapping)**
+
+- 관계형 데이터베이스와 객체 지향 프로그래밍 언어의 패러다임 불일치를 해결하기 위해
+- ORM 프레임워크가 중간에서 객체와 관계형 데이터베이스를 맵핑
+
+# **JPA (Java Persistence API, Jakarta Persistence API)**
+
+- 자바 ORM 기술 표준
+
+# **Entity / Entity 맵핑**
+
+- Entity
+    - JPA를 이용해서 데이터베이스 테이블과 맵핑할 클래스
+- Entity 맵핑
+    - Entity 클래스에 데이터베이스 테이블과 컬럼, 기본 키, 외래 키 등을 설정하는 것
+
+# **EntityManager 와 영속성 컨텍스트**
+
+- EntityManager
+    - Entity의 저장, 수정, 삭제, 조회 등 Entity와 관련된 모든 일을 처리하는 관리자
+- 영속성 컨텐스트
+    - Entity를 영구 저장하는 환경
+    - 1차 캐시 역할
+
+# 실습
+
+# **EntityManager와 영속성 컨텍스트**
+
+- `TODO` 넘버를 따라 질문에 답변하기
+
+```
+git checkout entity-manager
+
+```
+
+# 연관관계 맵핑
+
+# 데이터베이스 테이블 간의 관계(relationship)
+
+# **데이터베이스 정규화**
+
+- 정규화는 중복 데이터로 인해 발생하는 데이터 불일치 현상을 해소하는 과정
+
+# **정규화를 통해 각각의 데이터베이스 테이블들은 중복되지 않은 데이터를 가지게 됨**
+
+- 필요한 데이터를 가져오기 위해서는
+- 여러 테이블들 간의 관계(relationship)를 맺어 JOIN을 이용해서 관계 테이블을 참조
+
+# 연관 관계(association)
+
+- 데이터베이스 테이블 간의 관계(relationship)를 Entity 클래스의 속성(attribute)으로 모델링
+- 데이터베이스 테이블은 외래 키(FK)로 JOIN을 이용해서 관계 테이블을 참조
+    - 객체는 참조를 사용해서 연관된 객체를 참조
+
+```
+No object is an island.
+
+ - Kent Beck, Ward Cunningham
+
+```
+
+# 연관 관계(association)
+
+# **외래 Key(FK) 맵핑**
+
+- `@JoinColumn` : 외래 키 맵핑
+
+→ 컬럼이 하나인 경우 
+
+- `@JoinColumns` : 복합 외래 키 맵핑
+
+→ 컬럼이 하나 이상인 경우 
+
+# 예제
+
+# **ERD**
+
+https://nhnacademy.dooray.com/share/pages/RA4Ca0L0TCS0g3v14Kq6sw/attach-files/3713979917504323965
+
+db 테이블 입장에서는 조인할 때, 방향성이 존재하지 않는다.
+
+# 예제
+
+# **`Member` Entity**
+
+```java
+@Entity
+@Table(name="Members")
+public class Member {
+    @Id
+    @Column(name = "member_id")
+    private String id;
+
+    @Column(name = "user_name")
+    private String userName;
+
+// 팀은 1개 - 이므로 ManyToOne, FetchType.EAGER 속성 사용
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+// FetchType.EAGER 멤버를 가져올 때, 팀도 가져온다는 것 
+    @JoinColumn(name = "team_id") // fk mapping
+    private Team team;
+}
+
+```
+
+# 다중성 (Multiplicity)
+
+- @OneToOne
+- @OneToMany
+- @ManyToOne
+- (@ManyToMany) / 복잡하고,
+
+# Fetch 전략 (fetch)
+
+- JPA가 하나의 Entity를 가져올 때 연관관계에 있는 Entity들을 어떻게 가져올 것인지에 대한 설정
+
+# **Fetch 전략**
+
+- FetchType.EAGER (즉시 로딩) :  FetchType.EAGER 멤버를 가져올 때, 팀도 가져온다는 것
+- FetchType.LAZY (지연 로딩) : 참조가 일어날 때 뒤에 가져오는 것
+
+# **다중성과 기본 Fetch 전략**
+
+- -ToOne (@OneToOne, @ManyToOne ) : FetchType.EAGER
+- -ToMany (@OneToMany, @ManyToMany) : FetchType.LAZY
+
+# 영속성 전이 (cascade)
+
+회원이 탈퇴하면 회원이 올린 게시글까지 삭제 적용시키는 것 
+
+# **영속성 전이**
+
+- Entity의 영속성 상태 변화를 연관된 Entity에도 함께 적용
+- 연관관계의 다중성 (Multiplicity) 지정 시 cascade 속성으로 설정
+- 댓글을 지웠다고 해서 게시글이 지워지면 안된다. CascadeType.remove  — 서로다른 라이프사이클로 인해 cascade 타입을 잘 정애햐 한다.
+
+```java
+@OneToOne(cascade = CascadeType.PERSIST)
+@OneToMany(cascade = CascadeType.ALL) // ALL은 권장하지 않는다. 
+@ManyToOne(cascade = { CascadeType.PERSIST, CascadeType.REMOVE })
+
+```
+
+# **cascade 종류**
+
+```java
+public enum CascadeType {
+    ALL,        /* PERSIST, MERGE, REMOVE, REFRESH, DETACH */
+    PERSIST,    // cf.) EntityManager.persist()
+    MERGE,      // cf.) EntityManager.merge()
+    REMOVE,     // cf.) EntityManager.remove()
+    REFRESH,    // cf.) EntityManager.refresh()
+    DETACH      // cf.) EntityManager.detach()
+}
+
+```
+
+# 연관관계의 방향성
+
+- 단방향(unidirectional) : 조인컬럼이 하나만 있으면, 관계의 주인을 안다.
+- 양방향(bidirectional) : 양쪽에 다 연관관계 매핑이 존재한 경우
+
+# **양방향 연관 관계**
+
+- 관계의 주인(owner)
+    - 연관 관계의 주인은 외래 키(FK)가 있는 곳 —> 조인 컬럼을 지정해줘야 한다.
+    - 연관 관계의 주인이 아닌 경우, `mappedBy` 속성으로 연관 관계의 주인을 지정
+    
+
+![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/30914778-8bfa-404a-8db1-10f28062c17e/3a16ad55-1351-4abb-b35f-9e2f06028b66/Untitled.png)
+
+# 예제
+
+- 양방향(bidirectional) 연관 관계
+    - 관계의 주인(owner): 외래 키(FK)가 있는 곳
+        - `Member`
+    - 관계의 주인이 아닌 경우: `mappedBy` 속성으로 연관 관계의 주인을 지정
+        - `Team`
+
+# **`Member` Entity**
+
+```java
+@Entity
+@Table(name="Members") 
+public class Member {
+    @Id
+    @Column(name = "member_id")
+    private String id;
+
+    @Column(name = "user_name")
+    private String userName;
+
+// 연관관계의 주인 JoinColumn
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @JoinColumn(name = "team_id")
+    private Team team;
+}
+
+```
+
+# **`Team` Entity**
+
+```java
+@Entity
+@Table(name = "Teams")
+public class Team {
+    @Id
+    @Column(name = "team_id")
+    private String id;
+
+    @Column(name = "team_name")
+    private String name;
+
+// 멤버가 여러개니까 List 타입, 연관관계 주인인 필드명인 tema을 mappedBy "team" 속성 지정 
+    @OneToMany(mappedBy = "team", fetch = FetchType.EAGER)
+    private List<Member> members;
+}
+
+```
+
+# 단방향 vs 양방향
+
+# **단방향 맵핑만으로 연관관계 맵핑은 이미 완료**
+
+- JPA 연관관계도 내부적으로 FK 참조를 기반으로 구현하므로 본질적으로 참조의 방향은 단방향
+
+# **단방향에 비해 양방향은 복잡하고 양방향 연관관계를 맵핑하려면 객체에서 양쪽 방향을 모두 관리해야 함**
+
+- 물리적으로 존재하지 않는 연관관계를 처리하기 위해 mappedBy 속성을 통해 관계의 주인을 정해야 함
+
+# 양방향으로 하는 이유 : **단방향을 양방향으로 만들면 반대 방향으로의 객체 그래프 탐색 가능**
+
+- 우선적으로는 단방향 맵핑을 사용하고 반대 방향으로의 객체 그래프 탐색 기능이 필요할 때 양방향을 사용
+- member와 team 속성간의 mapping, mapped를 해줘야 하기 때문에 양방향은 복잡하다.
+- 양방향을 사용해야만 성능적으로 문제가 발생하지 않는 경우가 있다.
+
+```java
+Team t2 = entityManager.find()
+```
+
+# 실습
+
+# **`Item`, `Order`, `OrderItem` Entity 사이의 연관관계를 설정해보자**
+
+https://nhnacademy.dooray.com/share/pages/RA4Ca0L0TCS0g3v14Kq6sw/attach-files/3713979917635546903
+
+# 단방향 일대일(1:1) 관계
+
+- 주 테이블에 외래 키(FK)가 있는 경우
+
+# **ERD**
+
+https://nhnacademy.dooray.com/share/pages/RA4Ca0L0TCS0g3v14Kq6sw/attach-files/3713979917297653930
+
+# **예제**
+
+```
+git checkout unidirectional-one-to-one
+
+```
+
+# 단방향 일대일(1:1) 관계
+
+- 대상 테이블에 외래 키(FK)가 있는 경우
+
+# **ERD**
+
+https://nhnacademy.dooray.com/share/pages/RA4Ca0L0TCS0g3v14Kq6sw/attach-files/3713979917203191369
+
+# **JPA에서 지원하지 않는다**
+
+- 단방향 관계를 Locker 에서 Member로 수정하거나 양방향 관계로 만들어야 함
+- member에서 locker 외래키를 사용하지 못한다.
+- 1ㅣ1 관계에서는
+
+```java
+package com.nhnacademy.springjpa.entity;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
+import javax.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+
+// TODO #1: `Member` Entity
+@Getter
+@Setter
+@Entity
+@Table(name = "Members")
+public class Member {
+    @Id
+    @Column(name = "member_id")
+    private String id;
+
+    @Column(name = "user_name")
+    private String userName;
+
+    @OneToOne
+    @JoinColumn(name = "locker_id")
+    private Locker locker;
+
+    // 사용 불가능
+//    @OneToOne
+//    @JoinColumn(name="member_id")
+//    private Locker locker;
+
+		@OneToOne(mappedBy = "member")
+    private Locker locker;
+
+}
+```
+
+# **단방향 관계를 Locker 에서 Member로 수정**
+
+```
+git checkout unidirectional-one-to-one
+
+```
+
+# 양방향 일대일(1:1) 관계
+
+- 대상 테이블에 외래 키(FK)가 있는 경우
+
+```
+git checkout bidirectional-one-to-one
+
+```
+
+# 양방향 일대일(1:1) 관계
+
+- 주 테이블에 외래 키(FK)가 있는 경우
+
+# **앞선 단방향 일대일(1:1) 관계 예제에서 ...**
+
+```
+git checkout unidirectional-one-to-one
+
+```
+
+# **실습**
+
+- 양방향 관계로 바꿔봅시다
+
+```java
+package com.nhnacademy.springjpa.entity;
+
+import javax.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+// TODO #1: `Member` Entity
+@Getter
+@Setter
+@Entity
+@Table(name = "Members")
+public class Member {
+    @Id
+    @Column(name = "member_id")
+    private String id;
+
+    @Column(name = "user_name")
+    private String userName;
+
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "locker_id") // fk를 가지고 있기 때문에 JoinColumn
+    private Locker locker;
+
+    // 사용 불가능
+//    @OneToOne
+//    @JoinColumn(name="member_id")
+//    private Locker locker;
+
+}
+
+=================================
+
+package com.nhnacademy.springjpa.entity;
+
+import javax.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+// TODO #2: `Locker` Entity
+@Getter
+@Setter
+@Entity
+@Table(name = "Lockers")
+public class Locker {
+    @Id
+    @Column(name = "locker_id")
+    private Long id;
+
+    @Column(name = "locker_name")
+    private String name;
+
+    // 양방향
+    @OneToOne(mappedBy = "locker", fetch = FetchType.EAGER)
+    // @JoinColumn(name="") 사용할 수 없다.
+    private Member member;
+
+}
+```
+
+# 일대일(1:1) 식별 관계
+
+# **ERD**
+
+https://nhnacademy.dooray.com/share/pages/RA4Ca0L0TCS0g3v14Kq6sw/attach-files/3713979917397206750
+
+# **예제**
+
+```
+git checkout identifying-one-to-one
+```
+
+```java
+package com.nhnacademy.springjpa.entity;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+
+// TODO #2: `Board` Entity
+@Getter
+@Setter
+@Entity
+@Table(name = "Boards")
+public class Board {
+    @Id
+    @Column(name = "board_id")
+    private Long id;
+
+    private String title;
+
+}
+
+=====================================
+
+package com.nhnacademy.springjpa.entity;
+
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.MapsId;
+import javax.persistence.OneToOne;
+import javax.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+
+// TODO #3: `BoardDetail` Entity
+@Getter
+@Setter
+@Entity
+@Table(name = "BoardDetails")
+public class BoardDetail {
+    @Id
+    // board_id인데, 왜 컬럼 어노테이션 왜 생략? -- > MapsId로 인해 다시 쓸 필요가 없다.
+    private Long boardId;
+
+    private String content;
+
+    @MapsId // fk가 pk가 같은 경우에 사용한다.
+    @OneToOne
+    @JoinColumn(name = "board_id") // pk와 같은 fk
+    // 즉, fk가 BoardDetail의 pk와 같은 경우에 사용한다.
+    private Board board;
+
+}
+```
+
+정리 
+
+one to one에서 fk가 있는 경우 @JoinColum 등록
+
+1:1인데 식별 관계 - > fk가 pk면 @MapsId 등록 
+
+질문 사항 
+
+- 기본적인 사항에서는 fetch = FetchType.Lazy를 사용하고,
+
+참조가 자주 사용되는 경우에는 fetch = FetchType.EAGER를 사용한다.
+
+- 영속성 전이
+
+# 단방향 다대일(N:1) 관계
+
+# **ERD**
+
+1:다
+
+https://nhnacademy.dooray.com/share/pages/RA4Ca0L0TCS0g3v14Kq6sw/attach-files/3713979917096005503
+
+# **예제**
+
+```
+git checkout unidirectional-many-to-one
+
+```
+
+# **영속성 전이(cascade) 적용**
+
+```
+git checkout unidirectional-many-to-one2
+
+```
+
+# 단방향 일대다(1:N) 관계
+
+- 일대다 관계를 맺고, insert하면, 추가적인 UPDATE가 추가되는 경우에는 무조건 양방향 맵핑을 해야한다.
+
+# **예제**
+
+```
+git checkout unidirectional-one-to-many
+
+```
+
+# **단점**
+
+- 다른 테이블에 외래 키가 있으면 연관관계 처리를 위해 추가적인 UPDATE 쿼리 실행
+
+# **해결**
+
+- 단방향 일대다(1:N) 관계보다는 양방향 맵핑을 사용하자
+
+# 양방향 일대다(1:N) 관계
+
+# **예제**
+
+```
+git checkout bidirectional-one-to-many
+
+```
+
+# **영속성 전이(cascade) 적용**
+
+영속성 전이 : Mem
+
+`MemberDetail을 저장할 때 Member도 함께 저장하는 PERSIST 속성` 
+
+```
+git checkout bidirectional-one-to-many2
+
+```
+
+# 실습
+
+# **`Item`, `Order`, `OrderItem` Entity 사이의 연관관계를 ...**
+
+- 다시 같이 설정해봅시다
+
+- orders : orderItems는 1:다 / 식별
+- 식별관계 - @MapsId 가 필요
+
+https://nhnacademy.dooray.com/share/pages/RA4Ca0L0TCS0g3v14Kq6sw/attach-files/3713979917635546903
+
+```java
+package com.nhnacademy.springjpa.entity;
+
+import java.util.Date;
+import javax.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/*
+ * create table if not exists `Orders` (
+ *   `order_id` bigint not null auto_increment,
+ *   `order_date` timestamp not null,
+ *
+ *   primary key(`order_id`)
+ * );
+ *
+ */
+@NoArgsConstructor
+@Getter
+@Setter
+@Entity
+@Table(name = "Orders")
+public class Order {
+    @Id
+    @Column(name = "order_id")
+    private Long orderId;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "order_date")
+    private Date orderDate;
+    
+}
+
+=====
+
+package com.nhnacademy.springjpa.entity;
+
+import java.io.Serializable;
+import javax.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/*
+    create table if not exists `OrderItems` (
+        `order_id` bigint not null,
+        `line_number` integer not null,
+        `item_id` bigint not null,
+        `quantity` integer not null,
+
+        primary key(`order_id`, `line_number`)
+    );
+ */
+@NoArgsConstructor
+@Getter
+@Setter
+@Entity
+@Table(name = "OrderItems")
+public class OrderItem {
+    @EmbeddedId
+    private Pk pk;
+
+    @Id
+    private Long orderId;
+
+    // TODO #1: 외래 키를 활용해 연관관계 설정
+    @ManyToOne
+    @JoinColumn(name = "item_id")
+    private Item item;
+
+    @MapsId("orderId") // 속성명을 써야한다. 쿼리문의 필드명이 아니라.
+    @ManyToOne
+    @JoinColumn(name="order_id")
+    private Order order;
+
+    private Integer quantity;
+
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    @Getter
+    @Setter
+    @Embeddable
+    public static class Pk implements Serializable {
+        @Column(name = "order_id")
+        private Long orderId;
+
+        @Column(name = "line_number")
+        private Integer lineNumber;
+    }
+
+}
+```
+
+- 하나의 db table을 여러 엔티티로 매핑해도 상관없다.
+- 단, 똑같은 컬럼으로 다른
+
+```java
+
+@Column(name="item_name", insertable)
+private String itemName; 
+
+@Column(name="item_name")
+private String itemName2; // 여러 개 안된다. 
+
+ 
+
+```
+
+# **`Item` - `OrderItem`**
+
+```
+git checkout association
+
+```
+
+# **`Order` - `OrderItem`**
+
+```
+git checkout association2
+
+```
+
+질문사항
+
+- 스테레오 타입 빈의 종류  : @Component @ComponentScan @Service @Controller
+- RootConfig를 통해 빈을 설정
+- Singleton이란 클래스를 실체화한 인스턴스가 한 개만 존재하는 것.
+
+# Repository
+
+# **Repository의 정의**
+
+- 도메인 객체에 접근하는 컬렉션과 비슷한 인터페이스를 사용해 도메인과 데이터 맵핑 계층 사이를 중재(mediate)
+    - 마틴 파울러, P of EAA
+- a mechanism for encapsulating storage, retrieval, and search behavior which emulates a collection of objects
+    - 에릭 에반스, DDD
+
+# **주의할 점**
+
+- Repository는 JPA의 개념이 아니고, Spring Framework가 제공해주는 것임.
+
+# Spring Data Repository
+
+- data access layer 구현을 위해 반복해서 작성했던, 유사한 코드를 줄일 수 있는 추상화 제공
+
+> The goal of Spring Data repository abstraction is
+> 
+> 
+> to significantly reduce the amount of boilerplate code
+> 
+> required to implement data access layers for various persistence stores.
+> 
+
+```java
+// EntityManager를 통해 entity를 저장, 수정, 삭제, 조회
+// create, update, delete, and look up entities through EntityManager
+Item entity1 = new ItemEntity();
+entity1.setItemName("peach");
+entity1.setPrice(135L);
+entityManager.persist(entity1);
+
+Item entity2 = entityManager.find(ItemEntity.class, entity1.getItemId());
+entity2.setPrice(235L);
+entityManager.merge(entity2);
+
+// JPQL, Criteria API를 이용해서 복잡한 쿼리 수행
+// complex query can be executed by using JPQL, Criteria API
+String jpql = "select item from Item item where item.itemName like '%peach%'";
+List<ItemEntity> entites = entityManager.createQuery(jpql, ItemEntity.class)
+                                        .getResultList();
+
+```
+
+# Repository 설정
+
+# **Ex.) `ItemRepository` 인터페이스**
+
+- `JpaRepository` interface 상속
+
+```java
+public interface ItemRepository extends JpaRepository<Item, Long> {
+}
+
+<Item, Long> --> <Entity class, Entity primaryKey>
+
+```
+
+# `Repository` interface Hierarchy
+
+https://nhnacademy.dooray.com/plantuml/png/bLBRQiCm37tFL-ZHOUiFZ93HBWmo1XrDVi2jbTHWv90ueztbtsStbzfRoxOyEUSYYIDjiD6TDBezGlAnMC13sulDZ4NXxo1vuRMaUacYqAsnBqz-dHgiJmttr94aWst5TmXdD2bl8Sy03mP9T51WAxcIRtohC8NtwDDtXTFzuWJxtK37Nv4LCTn1uIEvBUc4IG6f8y__wIYh98dLCHSipvnWtHYfYQkad0Hua9tfFCbMQuMSFFzIAHPxnSiq90VpnEPPECgitkcU37ESqbIFe4251iVs84KSuAm492FDCOJTG7Fz-pcwClqfYyFehs_w3skOid3U2tbCjEs13hSIztHqC4DmJVzewv9xjilwtkyqpcNkucPydRkY8Ctna4wQyOWgrNTx5f_r91vFa7UFG-0vhRZPxPcNJEpHjj6a6E0QpPfmNBojLTgWlW00
+
+# JpaRepository
+
+- 웬만한 CRUD, Paging, Sorting 메서드 제공
+
+```java
+@NoRepositoryBean
+public interface JpaRepository<T, ID extends Serializable>extends PagingAndSortingRepository<T, ID>, QueryByExampleExecutor<T> {
+    List<T> findAll();
+    List<T> findAll(Sort sort);
+    List<T> findAllById(Iterable<ID> ids);
+
+    <S extends T> List<S> save(Iterable<S> entities);
+    <S extends T> S saveAndFlush(S entity);
+
+    void deleteInBatch(Iterable<T> entities);
+    void deleteAllInBatch();
+
+    // ...
+
+}
+
+```
+
+```java
+@NoRepositoryBean
+public interface PagingAndSortingRepository<T, ID extends Serializable> extends CrudRepository<T, ID> {
+    Iterable<T> findAll(Sort sort);
+    Page<T> findAll(Pageable pageable);
+
+}
+
+```
+
+```java
+@NoRepositoryBean
+public interface CrudRepository<T, ID extends Serializable> extends Repository<T, ID> {
+    <S extends T> S save(S entity);
+    <S extends T> Iterable<S> saveAll(Iterable<S> entities);
+
+    Optional<T> findById(ID id);
+
+    boolean existsById(ID id);
+
+    long count();
+
+    void deleteById(ID id);
+    void delete(T entity);
+    void deleteAll(Iterable<? extends T> entities);
+
+    // ...
+
+}
+
+```
+
+# JpaRepository가 제공하는 메서드들이 실제 수행하는 쿼리
+
+```
+// insert / update
+<S extends T> S save(S entity);
+
+// select * from Items where item_id = {id}
+Optional<T> findById(ID id);
+
+// select count(*) from Items;
+long count();
+
+// delete from Items where item_id = {id}
+void deleteById(ID id);
+
+// ...
+
+```
+
+# 실습
+
+# **`ItemRepository` 를 참조해서 ...**
+
+다음 Spring Data JPA Repository interface 를 생성하시오.
+
+- `OrderRepository`
+- `OrderItemRepository`
+
+```
+git checkout rerpository
+
+```
+
+# cf.) @Repository와 Spring Data Repository의 차이점
+
+# **@Repository**
+
+- org.springframework.stereotype.Repository
+- Spring Stereotype annotation
+    - Ex.) @Controller, @Service, @Repository, @Component
+- **@ComponentScan** 설정에 따라 classpath scanning을 통해 빈 자동 감지 및 등록
+- 다양한 데이터 액세스 기술마다 다른 예외 추상화 제공
+    - `DataAccessException`, `PersistenceExceptionTranslator`
+
+# **Spring Data Repository**
+
+- org.springframework.data.repository
+- **@EnableJpaRepositories** 설정에 따라 Repository interface 자동 감지 및 동적으로 구현 생성해서 Bean으로 등록
+- cf.) **@NoRepositoryBean**
+    - Spring Data Repository bean으로 등록하고 싶지 않은 중간 단계 interface에 적용
+
+# **예제**
+
+```java
+public interface ItemRepository {
+    // select * from Items where item_name like '{itemName}'
+    List<Item> findByItemNameLike(String itemName);
+
+    // select item_id from Items
+    // where item_name = '{itemName}'
+    // and price = {price} limit 1
+    boolean existsByItemNameAndPrice(String itemName, Long price);
+
+    // select count(*) from Items where item_name like '{itemName}'
+    int countByItemNameLike(String itemName);
+
+    // delete from Items where price between {price1} and {price2}
+    void deleteByPriceBetween(long price1, long price2);
+}
+
+```
+
+# 실습
+
+- `TODO` 넘버를 따라 요구사항 구현하기
+
+```
+git checkout method
+
+```
+
+```java
+package com.nhnacademy.springjpa.repository;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.nhnacademy.springjpa.annotation.Question;
+import com.nhnacademy.springjpa.config.RootConfig;
+import com.nhnacademy.springjpa.config.WebConfig;
+import com.nhnacademy.springjpa.entity.Item;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.ContextHierarchy;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
+
+@ExtendWith(SpringExtension.class)
+@WebAppConfiguration
+@Transactional
+@ContextHierarchy({
+    @ContextConfiguration(classes = RootConfig.class),
+    @ContextConfiguration(classes = WebConfig.class)
+})
+public class ItemRepositoryTest2 {
+    @Autowired
+    private ItemRepository itemRepository;
+
+    // TODO : #2 ItemRepository 인터페이스의 @Question 어노테이션이 붙은 메서드의 이름을 수정해서 아래 테스트를 통과하세요.
+    @Test
+    void test() {
+        Class<?> clazz = Arrays.stream(itemRepository.getClass().getInterfaces())
+            .filter(iface -> iface.isAssignableFrom(ItemRepository.class))
+            .findFirst()
+            .orElse(null);
+
+        assertThat(clazz).isNotNull();
+
+        Method questionedMethod = Arrays.stream(clazz.getDeclaredMethods())
+            .filter(method -> method.isAnnotationPresent(Question.class))
+            .findFirst()
+            .orElse(null);
+
+        assertThat(questionedMethod).isNotNull();
+
+        List<Item> items = ReflectionTestUtils.invokeMethod(itemRepository, questionedMethod.getName(),
+            Arrays.asList(100L, 200L));
+
+        assertThat(items).isNotEmpty()
+                         .hasSize(3);
+    }
+
+}
+```
+
+`// *TODO : #1 실습 - 다음 메서드의 이름을 아래 쿼리 결과가 나오도록 이름 규칙에 맞춰 수정하세요.*//        *select * from Items where price in (...)*@QuestionList<Item> findByPriceIn(Collection<Long> prices);`
+
+# 복잡한 쿼리 작성
+
+# **JPA에서 제공하는 객체 지향 쿼리**
+
+- JPQL: 엔티티 객체를 조회하는 객체 지향 쿼리
+- Criteria API: JPQL을 생성하는 빌더 클래스
+
+# **third party library를 이용하는 방법**
+
+- Querydsl : 복잡한 쿼리를 작성하는 데 사용하는 라이브러리
+- jOOQ
+- …
+
+# JPQL vs Criteria API
+
+# **JPQL**
+
+- SQL을 추상화해서 특정 DBMS에 의존적이지 않은 객체지향 쿼리
+- 문제 : 결국은 SQL이라는 점
+    - 문자 기반 쿼리이다보니 컴파일 타임에 오류를 발견할 수 없다
+
+```sql
+SELECT DISTINCT post
+FROM Post post // Entity name
+  JOIN post.postUsers postUser
+  JOIN postUser.projectMember projectMember
+  JOIN projectMember.member member
+WHERE member.name = 'dongmyo'
+
+```
+
+# JPQL vs Criteria API
+
+# **Criteria API**
+
+- 프로그래밍 코드로 JPQL을 작성할 수 있고 동적 쿼리 작성이 쉽다
+- 컴파일 타임에 오류를 발견할 수 있고 IDE의 도움을 받을 수 있다
+- 문제 : 너무 복잡
+
+```
+EntityManager em = ...;
+CriteriaBuilder cb = em.getCriteriaBuilder();
+CriteriaQuery<PostEntity> cq = cb.createQuery(PostEntity.class);
+Root<PostEntity> post = cq.from(Post.class); // 어떤 엔티티 지정할지 조회 
+cq.select(post); ..
+TypedQuery<PostEntity> q = em.createQuery(cq);
+List<PostEntity> posts = q.getResultList();
+
+```
+
+- cf.) 위 코드를 JPQL로 표현하면?
+
+```
+SELECT post FROM PostEntity post
+```
+
+- JpaRepository 상속
+- 메서드 이름으로 쿼리 생성
+
+# 메서드 이름으로 쿼리 생성
+
+- Spring Data JPA에서 제공하는 기능으로 이름 규칙에 맞춰 interface에 선언하면 쿼리 생성
+- cf.)
+    - https://docs.spring.io/spring-data/jpa/reference/repositories/query-keywords-reference.html#appendix.query.method.subject
+    - https://docs.spring.io/spring-data/jpa/reference/jpa/query-methods.html#jpa.query-methods.query-creation
+
+레포지토리는 인터페이스 작성 방법
