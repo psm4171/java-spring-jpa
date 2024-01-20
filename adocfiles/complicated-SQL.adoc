@@ -1,0 +1,287 @@
+
+### 학습목표 
+- Spring Data JPA가 제공하는 Method 기반의 query를 작성할 수 있으며 QueryDSL를 이용하여 복잡한 Query를 작성할 수 있다. 
+- 또한 반환하는 데이터는 원하는 필드만 뽑아서 DTO (Data Transfer Object) 형태로 사용할 수 있도록 학습한다.
+
+  # **Repository**
+
+- Spring Data Repository
+    - data access layer 구현을 위해 반복해서 작성했던, 유사한 코드를 줄일 수 있는 추상화 제공
+    - interface 선언, JpaRepository 상속
+- JpaRepository
+    - 웬만한 CRUD, Paging, Sorting 메서드 제공
+- 메서드 이름으로 쿼리 생성
+    - findBy, existsBy, countBy, deleteBy
+    - and, or
+    - like, in, between, ...
+
+# Repository 고급
+
+# `@Query`
+
+# **`@Query`**
+
+- JPQL 쿼리나 Native 쿼리를 직접 수행
+
+```java
+@Query("select i from Item i where i.price > ?1")
+List<Item> getItemsHavingPriceAtLeast(long price);
+
+```
+
+```java
+
+@Query을 통해 급한 경우 sql문을 수정해서 출력 결과를 확인 가능
+@Query(value = "select * from Items where price > ?1", nativeQuery = true)
+List<Item> getItemsHavingPriceAtLeast2(long price);
+
+```
+
+# **`@Modifying`**
+
+- `@Query` 를 통해 insert, update, delete 쿼리를 수행할 경우 붙여줘야 함
+
+```java
+
+@Modifying
+@Query("update Item i set i.itemName = :itemName where i.itemId = :itemId")
+int updateItemName(@Param("itemId") Long itemId, @Param("itemName")String itemName);
+
+```
+
+# **Demo**
+
+```
+git checkout query
+
+```
+
+# 메서드 이름 규칙에서 연관관계 Entity를 이용한 JOIN 쿼리 실행
+
+# **Demo**
+
+```
+git checkout method-association
+
+```
+
+```java
+// TODO #1: 메서드 이름 규칙에서 연관관계 Entity를 이용한 JOIN 쿼리 실행
+    List<Item> findByOrderItems_QuantityGreaterThan(Integer quantity);
+
+    List<Item> findByOrderItems_Order_OrderDateAfter(Date orderDate);
+
+@Test
+    void test4() {
+        List<Item> items = itemRepository.findByOrderItems_QuantityGreaterThan(4);
+        assertThat(items).hasSize(1);
+    }
+
+// result
+
+2024/01/16 16:08:05.101 [main] DEBUG org.hibernate.SQL - 
+    /* select
+        generatedAlias0 
+    from
+        Item as generatedAlias0 
+    left join
+        generatedAlias0.orderItems as generatedAlias1 
+    where
+        generatedAlias1.quantity>:param0 */ select
+            item0_."item_id" as item_id1_2_,
+            item0_."item_name" as item_nam2_2_,
+            item0_."price" as price3_2_ 
+        from
+            "Items" item0_ 
+        left outer join
+            "OrderItems" orderitems1_ 
+                on item0_."item_id"=orderitems1_."item_id" 
+        where
+            orderitems1_."quantity">?
+2024/01/16 16:08:05.106 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [1] as [INTEGER] - [4]
+```
+
+```java
+@Test
+    void test5() {
+        Date date = Date.from(LocalDateTime.of(2018, 8, 23, 10, 30)
+            .toInstant(ZoneOffset.of("+09:00")));
+        List<Item> items = itemRepository.findByOrderItems_Order_OrderDateAfter(date);
+        assertThat(items).hasSize(6);
+    }
+
+// result 
+
+2024/01/16 16:09:20.161 [main] DEBUG org.hibernate.SQL - 
+    /* select
+        generatedAlias0 
+    from
+        Item as generatedAlias0 
+    left join
+        generatedAlias0.orderItems as generatedAlias1 
+    left join
+        generatedAlias1.order as generatedAlias2 
+    where
+        generatedAlias2.orderDate>:param0 */ select
+            item0_."item_id" as item_id1_2_,
+            item0_."item_name" as item_nam2_2_,
+            item0_."price" as price3_2_ 
+        from
+            "Items" item0_ 
+        left outer join
+            "OrderItems" orderitems1_ 
+                on item0_."item_id"=orderitems1_."item_id" 
+        left outer join
+            "Orders" order2_ 
+                on orderitems1_."order_id"=order2_."order_id" 
+        where
+            order2_."order_date">?
+2024/01/16 16:09:20.170 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [1] as [TIMESTAMP] - [Thu Aug 23 10:30:00 KST 2018]
+```
+
+# 실습
+
+# **Day2 training**
+
+- 아래 ERD를 참고하여 `TODO` 넘버를 따라 요구사항 구현하기
+
+https://nhnacademy.dooray.com/share/pages/StFm0O4vSyuIZYAyEVYRsQ/attach-files/3713984226914189040
+
+```
+git checkout day2-training
+
+```
+
+# DTO Projection
+
+# **DTO Projection 이란**
+
+- JPA에 선언된 메서드를 사용할 때, 엔티티를 선언해서 모든 것을 출력했다 .
+- 단, 원하는 컬럼만 뽑아서 출력할 때는 DTO projection 기능을 통해 활용할 수 있다.
+- **Repository 메서드가 Entity를 반환하는 것이 아니라 원하는 필드만 뽑아서 DTO(Data Transfer Object)로 반환하는 것**
+
+# **Dto Projection 방법**
+
+- Interface 기반 Projection : 이 방법을 추천, 사용이 용이하고, 중첩문 구현이 가능하다
+- Class 기반 (DTO) Projection : DTO class를 직접 만드는 것, 인터페이스 선언하면 프록시 기능을 만들어서 구현하는 방법
+- Dynamic Projection : 동적으로 원하는
+    
+    ![스크린샷 2024-01-17 오전 9.36.21.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/30914778-8bfa-404a-8db1-10f28062c17e/a872928b-4b8d-4863-a722-c2b1613f44d1/%E1%84%89%E1%85%B3%E1%84%8F%E1%85%B3%E1%84%85%E1%85%B5%E1%86%AB%E1%84%89%E1%85%A3%E1%86%BA_2024-01-17_%E1%84%8B%E1%85%A9%E1%84%8C%E1%85%A5%E1%86%AB_9.36.21.png)
+    
+
+# **예제**
+
+```
+git checkout projection
+
+```
+
+중첩된 구조를 이용하면 
+
+연관관계인 애들의 필드를 모두 dto 인터페이스로 중첩 구조로 가져온다. 
+
+```java
+package com.nhnacademy.springjpa.domain;
+
+import java.util.List;
+
+// TODO #4: 중첩 구조를 가지는 Member DTO interface
+public interface MemberDto {
+    String getUserName();
+    List<MemberDetailDto> getMemberDetails();
+
+    // 중첩 구조가 가능하다.
+    interface MemberDetailDto {
+        String getType();
+        String getDescription();
+    }
+
+}
+```
+
+```java
+
+// select 문 없이 insert가 바로 실행되는 이유 ? 
+
+2024/01/17 09:51:23.260 [main] DEBUG org.hibernate.SQL - 
+    /* insert com.nhnacademy.springjpa.entity.Member
+        */ insert 
+        into
+            "Members"
+            ("user_name", "member_id") 
+        values
+            (?, ?)
+2024/01/17 09:51:23.263 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [1] as [VARCHAR] - [nhn]
+2024/01/17 09:51:23.263 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [2] as [VARCHAR] - [member1]
+2024/01/17 09:51:23.270 [main] DEBUG org.hibernate.SQL - 
+    /* insert com.nhnacademy.springjpa.entity.MemberDetail
+        */ insert 
+        into
+            "MemberDetails"
+            ("description", "member_id", "type", "member_detail_id") 
+        values
+            (?, ?, ?, ?)
+2024/01/17 09:51:23.270 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [1] as [VARCHAR] - [play]
+2024/01/17 09:51:23.270 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [2] as [VARCHAR] - [member1]
+2024/01/17 09:51:23.270 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [3] as [VARCHAR] - [habit]
+2024/01/17 09:51:23.270 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [4] as [BIGINT] - [1]
+2024/01/17 09:51:23.270 [main] DEBUG org.hibernate.SQL - 
+    /* insert com.nhnacademy.springjpa.entity.MemberDetail
+        */ insert 
+        into
+            "MemberDetails"
+            ("description", "member_id", "type", "member_detail_id") 
+        values
+            (?, ?, ?, ?)
+2024/01/17 09:51:23.270 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [1] as [VARCHAR] - [good]
+2024/01/17 09:51:23.270 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [2] as [VARCHAR] - [member1]
+2024/01/17 09:51:23.270 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [3] as [VARCHAR] - [score]
+2024/01/17 09:51:23.270 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [4] as [BIGINT] - [2]
+2024/01/17 09:51:23.278 [main] DEBUG org.hibernate.SQL - 
+    /* select
+        generatedAlias0 
+    from
+        Member as generatedAlias0 
+    where
+        generatedAlias0.userName=:param0 */ select
+            member0_."member_id" as member_i1_7_,
+            member0_."user_name" as user_nam2_7_ 
+        from
+            "Members" member0_ 
+        where
+            member0_."user_name"=?
+2024/01/17 09:51:23.278 [main] TRACE o.h.type.descriptor.sql.BasicBinder - binding parameter [1] as [VARCHAR] - [nhn]
+```
+
+- @Transient : 사용하지 않는 경우 어노테이션 설정
+- MemberDTO의 중첩 구조를 원하는 쿼리가 아니고,
+
+# Web Support
+
+- Spring Data 에서 제공하는 Web 확장 기능
+
+# **`@EnableSpringDataWebSupport`**
+
+```
+@Configuration
+@EnableWebMvc
+@EnableSpringDataWebSupport
+public class WebConfig {
+    // ...
+}
+
+```
+
+# Basic Web Support
+
+# **DomainClassConverter**
+
+- MVC request parameter나 path variable로부터 Spring Data Repository가 관리하는 도메인 클래스로의 conversion을 제공
+
+# **HandlerMethodArgumentResolver**
+
+- MVC request parameter를 **Pageable**, **Sort** 인스턴스로 resolver할 수 있도록 해 준다
+
+# Demo
+
+# **DomainClassConverter**
