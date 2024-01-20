@@ -1,0 +1,227 @@
+### 학습목표 
+- Pageable을 이용한 Pagination 구현
+
+# HandlerMethodArgumentResolver
+
+- Spring Data가 **page**, **size** 파라미터 값을 Controller의 **Pageable** 파라미터로 변환해서 전달해준다
+- **Pageable이라고 하는 인터페이스로 변환해서 제공한다. 즉,** /items?page=0&size 일 때, mvc로 구현하면
+
+# **Controller에 Pageable 적용**
+
+```java
+@RestController
+@RequestMapping("/items")
+public class ItemController {
+  @Autowired
+  private ItemService itemService;
+
+  @GetMapping
+  public List<ItemDto> getItems(Pageable pageable) {   // GET /items?page=0&size=30
+    return itemService.getItems(pageable);
+  }
+
+}
+
+```
+
+# Pageable
+
+- pagination 정보를 추상화한 인터페이스
+
+```java
+public interface Pageable {
+  int getPageNumber();
+  int getPageSize();
+  int getOffset();
+
+  Sort getSort(); // 게시물 - 날짜순, 작성순, 
+
+  Pageable next(); // 다음 페이지 
+  Pageable previousOrFirst(); // 이전 
+  Pageable first(); // 처음 페이지 
+
+  boolean hasPrevious();
+}
+
+```
+
+```java
+package com.nhnacademy.springjpa.controller;
+
+import com.nhnacademy.springjpa.domain.MemberDto;
+import com.nhnacademy.springjpa.domain.MemberNameOnly;
+
+import com.nhnacademy.springjpa.service.MemberService;
+import org.springframework.data.domain.Pageable;
+import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class MemberController {
+    // TODO #5: `GET /members?page=0&size=3` 와 같은 요청을 처리하도록 아래 코드를 완성하세요.
+
+    private final MemberService memberService;
+
+    public MemberController(MemberService memberService) {
+        this.memberService = memberService;
+    }
+
+    @GetMapping("/members")
+    public List<MemberNameOnly> getMembers(Pageable pageable) {
+        return memberService.getMember(pageable);
+    }
+
+}
+```
+
+```java
+package com.nhnacademy.springjpa.repository;
+
+import com.nhnacademy.springjpa.domain.MemberDto;
+import com.nhnacademy.springjpa.domain.MemberNameOnly;
+import com.nhnacademy.springjpa.entity.Member;
+import org.springframework.data.domain.Pageable;
+import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface MemberRepository extends JpaRepository<Member, String> {
+    MemberNameOnly queryById(String id);
+
+    List<MemberDto> findByUserName(String userName);
+
+    Slice<MemberNameOnly> findAllBy(Pageable pageable); // 원하는 컬럼만 뽑아온다.
+    // 사용자가 요청한 페이지+1을 요청해서 다음 페이지가 있는지 확인할 수 있는 slice
+
+}
+```
+
+```java
+package com.nhnacademy.springjpa.service;
+
+import com.nhnacademy.springjpa.domain.MemberNameOnly;
+import com.nhnacademy.springjpa.entity.Member;
+import org.springframework.data.domain.Pageable;
+import java.util.List;
+
+public interface MemberService {
+
+    List<MemberNameOnly> getMember(Pageable pageable);
+
+}
+
+========
+
+package com.nhnacademy.springjpa.service;
+
+import com.nhnacademy.springjpa.domain.MemberNameOnly;
+import com.nhnacademy.springjpa.repository.MemberRepository;
+import org.springframework.data.domain.Pageable;
+import java.util.List;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MemberServiceImpl implements MemberService{
+
+    private final MemberRepository memberRepository;
+
+    public MemberServiceImpl(MemberRepository memberRepository) {
+        this.memberRepository = memberRepository;
+    }
+
+    @Override
+    public List<MemberNameOnly> getMember(Pageable pageable) {
+        return memberRepository.findAllBy(pageable).getContent();
+    }
+}
+```
+
+# `Pageable` interface의 대표적인 구현
+
+# **`PageRequest` class**
+
+```
+// ?page=0&size=30
+PageRequest.of(0, 30);
+
+```
+
+# Pageable을 이용한 Pagination 구현
+
+- JpaRepository.findAll(Pageable pageable) 메서드로 Controller에서 전달받은 Pageable 객체를 그대로 전달
+
+```java
+@GetMapping("/items")
+    public List<ItemDto> getItems(@Param("page") Integer page,
+                                  @Param("size") Integer size) {
+        
+    }
+
+이렇게 사용하지 않고 아래처럼 구현
+
+패키지 : ~.domain.Pageable을 받을 것 
+
+@Service
+public class ItemServiceImpl implement ItemService {
+  public List<ItemDto> getItems(Pageable pageable) {
+      Page<Item> itemPage = itemRepository.findAll(pageable);
+      // ...
+
+// 왜 List를 안쓰고 Page를 사용할까? - 전체 페이지 갯수, 게시물 갯수를 나타내는 필드를 가지고 있다.
+    // Slice라는 인터페이스가 List를 가지고 있으면서 첫 페이지인지, 마지막 페이지인지 등의 정보를 가지고 있다. 따라서 List를 Page 사용
+
+  }
+}
+
+사용자 요청으로부터 page, size 객체를 추상화하는 것 - Pageable 
+
+web에서 pageable의 구현 클래스 - PageRequest
+
+----repository----
+
+반환하는 반환 타입 - Page 
+
+인터페이스를 직접 구현할 경우 구현 클래스 - PageImpl 
+
+```
+
+# `Page` interface
+
+# **`Page` interface**
+
+```java
+public interface Page<T> extends Slice<T> {
+	int getTotalPages();
+	long getTotalElements();
+
+    // ...
+}
+
+```
+
+# **`Slice` interface**
+
+```java
+public interface Slice<T> extends Streamable<T> {
+	int getNumber();
+	int getSize();
+	int getNumberOfElements();
+	List<T> getContent();
+	boolean hasContent();
+	Sort getSort();
+
+	boolean isFirst();
+	boolean isLast();
+	boolean hasNext();
+	boolean hasPrevious();
+
+    // ...
+}
+
+```
+
+# **`Page` interface의 대표적인 구현**
+
+- `PageImpl` class
