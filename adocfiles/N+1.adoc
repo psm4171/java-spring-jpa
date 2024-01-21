@@ -1,1 +1,223 @@
 ### JPA 사용시 발생할 수 있는 N+1문제를 직접 접해보고 이를 회피할 방법을 학습한다.
+
+# N + 1 문제
+
+# 단일 Entity 조회 시
+
+# **Java Code**
+
+```
+itemRepository.findById(1L);
+
+```
+
+# **실제 수행되는 쿼리**
+
+```
+select
+    item0_."item_id" as item_id1_4_0_,
+    item0_."item_name" as item_nam2_4_0_,
+    item0_."price" as price3_4_0_
+from
+    "Items" item0_
+where
+    item0_."item_id"=1
+
+```
+
+# 여러 개의 Entity 조회 시
+
+# **Java Code**
+
+```
+itemRepository.findAll();
+
+```
+
+# **실제 수행되는 쿼리**
+
+```
+select
+    item0_."item_id" as item_id1_4_,
+    item0_."item_name" as item_nam2_4_,
+    item0_."price" as price3_4_
+from
+    "Items" item0_
+
+```
+
+# 여러 개의 Entity 조회 + 객체 그래프 탐색
+
+# **Java Code**
+
+```
+itemRepository.findAll()
+    .stream()
+    .map(Item::getOrderItems)
+    .flatMap(Collection::stream)
+    .collect(Collectors.summarizingInt(OrderItem::getQuantity));
+
+```
+
+# **실제 수행되는 쿼리**
+
+```
+select
+    item0_."item_id" as item_id1_4_,
+    item0_."item_name" as item_nam2_4_,
+    item0_."price" as price3_4_
+from
+    "Items" item0_
+
+```
+
+```
+select
+    orderitems0_."item_id" as item_id4_8_0_,
+    orderitems0_."line_number" as line_num1_8_0_,
+    orderitems0_."order_id" as order_id2_8_0_,
+    orderitems0_."line_number" as line_num1_8_1_,
+    orderitems0_."order_id" as order_id2_8_1_,
+    orderitems0_."item_id" as item_id4_8_1_,
+    orderitems0_."quantity" as quantity3_8_1_,
+    order1_."order_id" as order_id1_9_2_,
+    order1_."order_date" as order_da2_9_2_
+from
+    "OrderItems" orderitems0_
+inner join
+    "Orders" order1_
+        on orderitems0_."order_id"=order1_."order_id"
+where
+    orderitems0_."item_id"=1
+
+```
+
+```
+select
+    orderitems0_."item_id" as item_id4_8_0_,
+    orderitems0_."line_number" as line_num1_8_0_,
+    orderitems0_."order_id" as order_id2_8_0_,
+    orderitems0_."line_number" as line_num1_8_1_,
+    orderitems0_."order_id" as order_id2_8_1_,
+    orderitems0_."item_id" as item_id4_8_1_,
+    orderitems0_."quantity" as quantity3_8_1_,
+    order1_."order_id" as order_id1_9_2_,
+    order1_."order_date" as order_da2_9_2_
+from
+    "OrderItems" orderitems0_
+inner join
+    "Orders" order1_
+        on orderitems0_."order_id"=order1_."order_id"
+where
+    orderitems0_."item_id"=2
+
+```
+
+...
+
+# N + 1 문제
+
+- 쿼리 한 번으로 N 건의 레코드를 가져왔을 때, 연관관계 Entity를 가져오기 위해 쿼리를 N번 추가 수행하는 문제
+
+# **해결 방법**
+
+- Fetch Join
+    - JPQL `join fetch`
+    - Querydsl `.fetchJoin()`
+- Entity Graph
+
+# JPQL `join fetch`
+
+- join에 참여하는 order, orderItem 등의 엔티티를 모두 가져오게 하는 fetch
+- 
+
+# **예제**
+
+```
+git checkout n-plus-1-jpql
+
+```
+
+# **실습**
+
+```
+n-
+
+```
+
+# Querydsl `.fetchJoin()`
+
+# **Demo**
+
+# Fetch Join 주의할 점
+
+# **~~Pagination + Fetch Join~~**
+
+- Pagination 쿼리에 Fetch JOIN을 적용하면 실제로는 모든 레코드를 가져오는 쿼리가 실행된다
+- **절대 사용 금물**
+
+# **둘 이상의 컬렉션을 Fetch Join 시 MultipleBagFetchException 발생**
+
+- Java의 java.util.List 타입은 기본적으로 Hibernate의 Bag 타입으로 맵핑됨
+- Bag은 Hibernate에서 중복 요소를 허용하는 비순차(unordered) 컬렉션
+- 둘 이상의 컬렉션(Bag)을 Fetch Join하는 경우
+    - 그 결과로 만들어지는 카테시안 곱(Cartesian Product)에서
+    - 어느 행이 유효한 중복을 포함하고 있고
+    - 어느 행이 그렇지 않은 지 판단할 수 없어
+    - MultipleBagFetchException 발생
+- 해결 방법
+    - List를 Set으로 변경
+- 특이하게. 데이터 자체가 여러개의 중복을 허용하는 경우는 순서를 부여해서 해결한다. —> 딱히 해결책이 아니다.
+
+# Entity Graph
+
+# **Entity Graph**
+
+**: order, orderItem을 가져와 같은 범위를 지정** 
+
+- E**ntity를 조회하는 시점에 연관 Entity들을 함께 조회할 수 있도록 해주는 기능**
+- **`@NamedEntityGraph`**를 사용하는 이유는 JPA(Java Persistence API)에서 엔터티 그래프를 정의하여 데이터베이스에서 데이터를 효율적으로 가져오기 위해서 사용
+
+# **종류**
+
+- 정적 선언 - `@NamedEntityGraph`
+- 동적 선언 - `EntityManager.createEntityGraph()`
+
+# `@NamedEntityGraph` 예제
+
+# **Entity에 `@NamedEntityGraph` 선언**
+
+```java
+@NamedEntityGraphs({
+    @NamedEntityGraph(name = "itemWithOrderItems", attributeNodes = {
+        @NamedAttributeNode("orderItems")
+    }),
+    @NamedEntityGraph(name = "itemWithOrderItemsAndOrder", attributeNodes = {
+        @NamedAttributeNode(value = "orderItems", subgraph = "orderItems")
+    }, subgraphs = @NamedSubgraph(name = "orderItems", attributeNodes = {
+        @NamedAttributeNode("order")
+    }))
+})
+@Entity
+public class Item {
+    // ...
+}
+
+```
+
+# **Repository method 에서 `@EntityGraph`를 이용해서 적용할 entity graph 지정**
+
+```
+@EntityGraph("itemWithOrderItems")
+List<Item> readAllBy();
+
+```
+
+N+1 문제는 객체 그래프를 완성하기 위해 연관관계 있는 애들을 추가적으로 실행하기 위한 것 
+
+- fetch join 을
+
+: join 쿼리 뒤에 fetch 기입 
+
+- 페이지네이션과 페치 조인을 같이 사용하면 안된다.
+- entityGraph를 사용해서 범위를 지정해서 이 메서드를 실행할 때, 어느 범위까지 데이터를 가져올지를 실행
